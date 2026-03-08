@@ -50,7 +50,7 @@ export const MATCHUPS_DATABASE: { [championId: string]: { strongAgainst: string[
   
   // ADC
   'ashe': { strongAgainst: ['kalista', 'draven', 'samira', 'jhin'], weakAgainst: ['zeri', 'kaisa', 'varus', 'caitlyn'] },
-  'caitlyn': { strongAgainst: ['ashe', 'mf', 'varus', 'jhin'], weakAgainst: ['akali', 'zyra', 'karma', 'lux'] },
+  'caitlyn': { strongAgainst: ['ashe', 'mf', 'varus', 'jhin'], weakAgainst: ['akali', 'zyra', 'karma'] },
   'draven': { strongAgainst: ['ashe', 'varus', 'jhin', 'kalista'], weakAgainst: ['thresh', 'blitzcrank', 'leona', 'nautilus'] },
   'jhin': { strongAgainst: ['ashe', 'caitlyn', 'varus', 'mf'], weakAgainst: ['zeri', 'kaisa', 'thresh', 'leona'] },
   'kaisa': { strongAgainst: ['ashe', 'caitlyn', 'varus', 'jhin'], weakAgainst: ['blitzcrank', 'thresh', 'leona', 'nautilus'] },
@@ -62,23 +62,21 @@ export const MATCHUPS_DATABASE: { [championId: string]: { strongAgainst: string[
   'zeri': { strongAgainst: ['ashe', 'caitlyn', 'varus', 'jhin'], weakAgainst: ['braum', 'thresh', 'leona', 'nautilus'] },
   
   // SUPPORT
-  'alistar': { strongAgainst: ['blitzcrank', 'thresh', 'leona', 'nautilus'], weakAgainst: ['zyra', 'karma', 'lux', 'brand'] },
+  'alistar': { strongAgainst: ['blitzcrank', 'thresh', 'leona', 'nautilus'], weakAgainst: ['zyra', 'karma', 'brand'] },
   'blitzcrank': { strongAgainst: ['senna', 'lulu', 'janna', 'bard'], weakAgainst: ['karma', 'leona', 'thresh', 'nautilus'] },
-  'braum': { strongAgainst: ['pyke', 'lux', 'brand', 'zyra'], weakAgainst: ['alistar', 'nautilus', 'zyra', 'karma'] },
-  'janna': { strongAgainst: ['blitzcrank', 'alistar', 'leona', 'nautilus'], weakAgainst: ['zyra', 'brand', 'karma', 'lux'] },
-  'karma': { strongAgainst: ['blitzcrank', 'alistar', 'thresh', 'leona'], weakAgainst: ['zyra', 'lux', 'brand', 'bard'] },
-  'leona': { strongAgainst: ['blitzcrank', 'pyke', 'thresh', 'senna'], weakAgainst: ['bard', 'karma', 'vel-koz', 'lux'] },
-  'lulu': { strongAgainst: ['blitzcrank', 'alistar', 'leona', 'nautilus'], weakAgainst: ['zyra', 'brand', 'karma', 'lux'] },
-  'lux': { strongAgainst: ['talon', 'zed', 'yasuo', 'blitzcrank'], weakAgainst: ['kassadin', 'fizz', 'ahri', 'ryze'] },
-  'nautilus': { strongAgainst: ['blitzcrank', 'pyke', 'thresh', 'senna'], weakAgainst: ['karma', 'lux', 'brand', 'bard'] },
-  'pyke': { strongAgainst: ['thresh', 'blitzcrank', 'alistar', 'leona'], weakAgainst: ['bard', 'karma', 'lux', 'brand'] },
-  'senna': { strongAgainst: ['blitzcrank', 'alistar', 'leona', 'nautilus'], weakAgainst: ['zyra', 'brand', 'karma', 'lux'] },
-  'thresh': { strongAgainst: ['leona', 'blitzcrank', 'senna', 'nautilus'], weakAgainst: ['pyke', 'bard', 'karma', 'lux'] },
-  'zyra': { strongAgainst: ['blitzcrank', 'alistar', 'leona', 'nautilus'], weakAgainst: ['karma', 'lux', 'brand', 'bard'] },
+  'braum': { strongAgainst: ['pyke', 'brand', 'zyra'], weakAgainst: ['alistar', 'nautilus', 'karma'] },
+  'janna': { strongAgainst: ['blitzcrank', 'alistar', 'leona', 'nautilus'], weakAgainst: ['zyra', 'brand', 'karma'] },
+  'karma': { strongAgainst: ['blitzcrank', 'alistar', 'thresh', 'leona'], weakAgainst: ['zyra', 'brand', 'bard'] },
+  'leona': { strongAgainst: ['blitzcrank', 'pyke', 'thresh', 'senna'], weakAgainst: ['bard', 'karma'] },
+  'lulu': { strongAgainst: ['blitzcrank', 'alistar', 'leona', 'nautilus'], weakAgainst: ['zyra', 'brand', 'karma'] },
+  'nautilus': { strongAgainst: ['blitzcrank', 'pyke', 'thresh', 'senna'], weakAgainst: ['karma', 'brand', 'bard'] },
+  'pyke': { strongAgainst: ['thresh', 'blitzcrank', 'alistar', 'leona'], weakAgainst: ['bard', 'karma', 'brand'] },
+  'senna': { strongAgainst: ['blitzcrank', 'alistar', 'leona', 'nautilus'], weakAgainst: ['zyra', 'brand', 'karma'] },
+  'thresh': { strongAgainst: ['leona', 'blitzcrank', 'senna', 'nautilus'], weakAgainst: ['pyke', 'bard', 'karma'] },
+  'zyra': { strongAgainst: ['blitzcrank', 'alistar', 'leona', 'nautilus'], weakAgainst: ['karma', 'brand', 'bard'] },
 }
 
 export const SYNERGIES_DATABASE: { [championId: string]: { good: string[], bad: string[] } } = {
-  // Synergies: Champions qui vont bien ensemble
   'garen': { good: ['amumu', 'galio', 'malphite', 'jarvan', 'leona'], bad: ['vayne', 'fiora', 'kled'] },
   'darius': { good: ['amumu', 'galio', 'malphite', 'jarvan', 'leona'], bad: ['vayne', 'quinn', 'fiora'] },
   'amumu': { good: ['katarina', 'ahri', 'darius', 'garen', 'jarvan'], bad: ['warwick', 'graves'] },
@@ -87,7 +85,7 @@ export const SYNERGIES_DATABASE: { [championId: string]: { good: string[], bad: 
   'vayne': { good: ['braum', 'karma', 'lulu', 'janna', 'bard'], bad: ['leona', 'blitzcrank', 'nautilus'] },
   'caitlyn': { good: ['leona', 'nautilus', 'braum', 'thresh', 'alistar'], bad: ['zyra', 'karma'] },
   'ashe': { good: ['leona', 'braum', 'thresh', 'nautilus', 'alistar'], bad: ['zeri', 'kaisa'] },
-  'leona': { good: ['vayne', 'caitlyn', 'ashe', 'jhin', 'draven'], bad: ['bard', 'karma', 'lux'] },
+  'leona': { good: ['vayne', 'caitlyn', 'ashe', 'jhin', 'draven'], bad: ['bard', 'karma'] },
   'thresh': { good: ['draven', 'samira', 'kalista', 'jhin', 'caitlyn'], bad: ['leona', 'nautilus'] },
   'braum': { good: ['vayne', 'ashe', 'caitlyn', 'jhin', 'kalista'], bad: ['alistar', 'nautilus'] },
   'blitzcrank': { good: ['mf', 'jhin', 'draven', 'samira', 'kalista'], bad: ['leona', 'thresh'] },
