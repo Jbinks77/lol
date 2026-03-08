@@ -2,7 +2,7 @@
 
 import { ChampionAttributes } from './types'
 
-// Données locales de fallback (au cas où l'API échoue)
+// Données locales de fallback
 const FALLBACK_CHAMPIONS: ChampionAttributes[] = [
   { id: 'aatrox', name: 'Aatrox', title: 'The Darkin Blade', roles: ['top'], primaryDamage: 'AD', styles: ['engage', 'burst', 'dps'], difficulty: 3, strength: 8, popularity: 8, strongAgainst: [], weakAgainst: [], synergizesWith: [], clashesWith: [], engageTools: true, peelingTools: false, scalingPotential: true, earlyGamePower: true, teamFightPresence: true },
   { id: 'ahri', name: 'Ahri', title: 'The Nine-Tailed Fox', roles: ['mid'], primaryDamage: 'AP', styles: ['burst', 'poke', 'scaling'], difficulty: 2, strength: 8, popularity: 9, strongAgainst: [], weakAgainst: [], synergizesWith: [], clashesWith: [], engageTools: true, peelingTools: true, scalingPotential: true, earlyGamePower: false, teamFightPresence: true },
@@ -12,7 +12,7 @@ export let CHAMPIONS_DATABASE: ChampionAttributes[] = FALLBACK_CHAMPIONS
 
 // Fonction pour transformer les données Riot en ChampionAttributes
 function transformRiotChampion(key: string, riotData: any): ChampionAttributes {
-  // Mapper les rôles depuis les tags Riot
+  // Mapper les rôles
   const roleMap: { [key: string]: any } = {
     'Top': 'top',
     'Jungle': 'jungle',
@@ -24,39 +24,49 @@ function transformRiotChampion(key: string, riotData: any): ChampionAttributes {
   const roles = riotData.tags?.map((tag: string) => roleMap[tag]).filter(Boolean) || ['mid']
 
   // Mapper le type de dégâts
-  const damageTypeMap: { [key: string]: any } = {
-    'Physical': 'AD',
-    'Magic': 'AP',
-    'True': 'True',
-  }
-  const primaryDamage = damageTypeMap[riotData.info?.attack > riotData.info?.magic ? 'Physical' : 'Magic'] || 'Mixed'
+  const attack = riotData.info?.attack || 5
+  const magic = riotData.info?.magic || 5
+  const primaryDamage = attack > magic ? 'AD' : 'AP'
 
-  // Styles basés sur les statistiques Riot
+  // Styles basés sur les stats
   const styles: any[] = []
-  if (riotData.info?.defense > 6) styles.push('tank')
-  if (riotData.info?.damage > 7) styles.push('burst', 'dps')
-  if (riotData.info?.cc > 6) styles.push('engage')
-  if (riotData.info?.difficulty > 6) styles.push('scaling')
+  const defense = riotData.info?.defense || 5
+  const cc = riotData.info?.cc || 0
+  const difficulty = riotData.info?.difficulty || 5
+
+  if (defense > 6) styles.push('tank')
+  if (attack > 7 || magic > 7) styles.push('burst', 'dps')
+  if (cc > 6) styles.push('engage')
+  if (difficulty > 6) styles.push('scaling')
   if (styles.length === 0) styles.push('dps')
+
+  // Convertir difficulty en 1-5
+  const difficultyValue = Math.max(1, Math.min(5, Math.ceil(difficulty / 2))) as 1 | 2 | 3 | 4 | 5
+  
+  // Convertir strength en 1-10
+  const strengthValue = Math.max(1, Math.min(10, Math.ceil((attack + defense + magic) / 3)))
+  
+  // Popularity en 1-10
+  const popularityValue = Math.max(1, Math.min(10, Math.floor(Math.random() * 10) + 5))
 
   return {
     id: key,
     name: riotData.name,
     title: riotData.title,
-    roles: roles.length > 0 ? roles : ['mid'],
+    roles: roles.length > 0 ? (roles as any) : ['mid'],
     primaryDamage: primaryDamage as any,
     styles: styles as any,
-    difficulty: Math.ceil((riotData.info?.difficulty || 5) / 2),
-    strength: Math.ceil(((riotData.info?.attack || 5) + (riotData.info?.defense || 5) + (riotData.info?.magic || 5)) / 3),
-    popularity: Math.floor(Math.random() * 10) + 5,
+    difficulty: difficultyValue,
+    strength: strengthValue,
+    popularity: popularityValue,
     strongAgainst: [],
     weakAgainst: [],
     synergizesWith: [],
     clashesWith: [],
     engageTools: styles.includes('engage'),
-    peelingTools: styles.includes('tank') || (riotData.info?.cc || 0) > 5,
-    scalingPotential: (riotData.info?.difficulty || 0) > 5,
-    earlyGamePower: (riotData.info?.attack || 0) > 6,
+    peelingTools: styles.includes('tank') || cc > 5,
+    scalingPotential: difficulty > 5,
+    earlyGamePower: attack > 6,
     teamFightPresence: true,
   }
 }
@@ -64,7 +74,6 @@ function transformRiotChampion(key: string, riotData: any): ChampionAttributes {
 // Charger les champions depuis l'API Riot Data Dragon
 export async function loadChampionsFromRiot() {
   try {
-    // URL de l'API Riot Data Dragon (gratuit, pas d'authentification)
     const response = await fetch(
       'https://ddragon.leagueoflegends.com/cdn/14.5.1/data/en_US/champion.json'
     )
@@ -78,7 +87,7 @@ export async function loadChampionsFromRiot() {
       return CHAMPIONS_DATABASE
     }
   } catch (error) {
-    console.warn('⚠️ Erreur API Riot, utilisation du fallback:', error)
+    console.warn('⚠️ Erreur API Riot:', error)
   }
 
   return CHAMPIONS_DATABASE
