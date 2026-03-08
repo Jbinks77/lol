@@ -1,5 +1,6 @@
 import { ChampionAttributes, DraftState, Recommendation, Role } from './types'
 import { CHAMPIONS_DATABASE, getChampionById } from './champions'
+import { MATCHUPS_DATABASE, SYNERGIES_DATABASE } from './matchups'
 
 interface ScoringBreakdown {
   counterScore: number
@@ -10,80 +11,57 @@ interface ScoringBreakdown {
 }
 
 function calculateCounterScore(
-  champion: ChampionAttributes,
+  championId: string,
   enemyTeam: string[]
 ): number {
   if (enemyTeam.length === 0) return 50
 
-  const enemyChamps = enemyTeam.map((id) => getChampionById(id)).filter(Boolean) as ChampionAttributes[]
+  const matchups = MATCHUPS_DATABASE[championId]
+  if (!matchups) return 50
 
   let counterPoints = 0
-  let totalMatchups = 0
 
-  enemyChamps.forEach((enemy) => {
-    if (!enemy) return
-    totalMatchups += 2
-
-    // Strong against
-    if (champion.strongAgainst.includes(enemy.id)) {
-      counterPoints += 2
+  enemyTeam.forEach((enemyId) => {
+    // Strong against = +15 points par matchup
+    if (matchups.strongAgainst.includes(enemyId)) {
+      counterPoints += 15
     }
-    // Weak against
-    else if (champion.weakAgainst.includes(enemy.id)) {
-      counterPoints -= 2
+    // Weak against = -15 points par matchup
+    else if (matchups.weakAgainst.includes(enemyId)) {
+      counterPoints -= 15
     }
   })
 
-  if (totalMatchups === 0) return 50
-  return Math.max(0, Math.min(100, 50 + (counterPoints / totalMatchups) * 25))
+  // Moyenne pondérée
+  const avgCounter = counterPoints / Math.max(enemyTeam.length, 1)
+  return Math.max(0, Math.min(100, 50 + avgCounter))
 }
 
 function calculateSynergyScore(
-  champion: ChampionAttributes,
+  championId: string,
   allyTeam: string[]
 ): number {
   if (allyTeam.length === 0) return 50
 
-  const allyChamps = allyTeam.map((id) => getChampionById(id)).filter(Boolean) as ChampionAttributes[]
+  const synergies = SYNERGIES_DATABASE[championId]
+  if (!synergies) return 50
 
   let synergyPoints = 0
-  let totalSlots = Math.max(allyTeam.length, 1)
 
-  allyChamps.forEach((ally) => {
-    if (!ally) return
-
-    // Direct synergy
-    if (champion.synergizesWith.includes(ally.id)) {
-      synergyPoints += 1.5
+  allyTeam.forEach((allyId) => {
+    // Good synergy = +12 points
+    if (synergies.good.includes(allyId)) {
+      synergyPoints += 12
     }
-    // Clash
-    else if (champion.clashesWith.includes(ally.id)) {
-      synergyPoints -= 1.5
-    }
-
-    // Damage balance bonus
-    if (champion.primaryDamage !== ally.primaryDamage) {
-      synergyPoints += 0.5
-    }
-
-    // Style synergy (engage stacking)
-    if (
-      champion.styles.includes('engage') &&
-      ally.styles.includes('engage')
-    ) {
-      synergyPoints += 0.3
-    }
-
-    // Peel synergy
-    if (
-      champion.styles.includes('peel') &&
-      ally.primaryDamage === 'AD'
-    ) {
-      synergyPoints += 0.3
+    // Bad synergy = -12 points
+    else if (synergies.bad.includes(allyId)) {
+      synergyPoints -= 12
     }
   })
 
-  return Math.max(0, Math.min(100, 50 + (synergyPoints / totalSlots) * 15))
+  // Moyenne
+  const avgSynergy = synergyPoints / Math.max(allyTeam.length, 1)
+  return Math.max(0, Math.min(100, 50 + avgSynergy))
 }
 
 function calculateRoleScore(
@@ -93,10 +71,10 @@ function calculateRoleScore(
   if (!selectedRole) return 70
 
   if (champion.roles.includes(selectedRole)) {
-    return 90 // Primary or secondary role
+    return 90
   }
 
-  return 30 // Off-role
+  return 30
 }
 
 function calculateDamageBalanceScore(
@@ -111,21 +89,20 @@ function calculateDamageBalanceScore(
 
   const adCount = allyChamps.filter((c) => c.primaryDamage === 'AD').length
   const apCount = allyChamps.filter((c) => c.primaryDamage === 'AP').length
-  const mixedCount = allyChamps.filter((c) => c.primaryDamage === 'Mixed').length
 
-  const totalDamage = adCount + apCount + mixedCount
+  const totalDamage = adCount + apCount
 
   if (totalDamage === 0) return 70
 
-  // If already heavy on one damage type, penalize
+  // Si déjà 2+ du même type, pénalise
   if (champion.primaryDamage === 'AD' && adCount >= 2) {
-    return 50
+    return 40
   }
   if (champion.primaryDamage === 'AP' && apCount >= 2) {
-    return 50
+    return 40
   }
 
-  // Bonus if we need this damage type
+  // Bonus si type manquant
   if (champion.primaryDamage === 'AD' && adCount === 0) return 90
   if (champion.primaryDamage === 'AP' && apCount === 0) return 90
 
@@ -138,22 +115,23 @@ function calculateRiskScore(
 ): number {
   let risk = 0
 
-  // High difficulty = higher risk
+  // Difficulté haute = risque
   if (champion.difficulty >= 4) {
-    risk += 15
+    risk += 20
   }
 
-  // Check if heavily countered
-  const enemyChamps = enemyTeam
-    .map((id) => getChampionById(id))
-    .filter(Boolean) as ChampionAttributes[]
+  // Counters
+  const matchups = MATCHUPS_DATABASE[champion.id]
+  if (matchups) {
+    const hardCounters = enemyTeam.filter((id) =>
+      matchups.weakAgainst.includes(id)
+    ).length
 
-  const hardCounters = enemyChamps.filter((e) =>
-    champion.weakAgainst.includes(e.id)
-  ).length
-
-  if (hardCounters >= 2) {
-    risk += 20
+    if (hardCounters >= 2) {
+      risk += 30
+    } else if (hardCounters === 1) {
+      risk += 15
+    }
   }
 
   return Math.min(100, risk)
@@ -176,8 +154,8 @@ export function getRecommendations(
       : availableChampions.filter((c) => c.roles.includes(draftState.selectedRole!))
 
   const recommendations = filtered.map((champion) => {
-    const counterScore = calculateCounterScore(champion, draftState.enemyTeam)
-    const synergyScore = calculateSynergyScore(champion, draftState.allyTeam)
+    const counterScore = calculateCounterScore(champion.id, draftState.enemyTeam)
+    const synergyScore = calculateSynergyScore(champion.id, draftState.allyTeam)
     const roleScore = calculateRoleScore(champion, draftState.selectedRole)
     const damageBalanceScore = calculateDamageBalanceScore(
       champion,
@@ -193,13 +171,13 @@ export function getRecommendations(
       riskScore,
     }
 
-    // Weighted average
+    // Weighted scoring: counter + synergy sont les plus importants
     const overallScore = Math.round(
-      counterScore * 0.25 +
-        synergyScore * 0.25 +
-        roleScore * 0.2 +
-        damageBalanceScore * 0.2 -
-        riskScore * 0.1
+      counterScore * 0.30 +
+        synergyScore * 0.30 +
+        roleScore * 0.20 +
+        damageBalanceScore * 0.15 -
+        riskScore * 0.05
     )
 
     return {
@@ -207,13 +185,13 @@ export function getRecommendations(
       overallScore: Math.max(0, Math.min(100, overallScore)),
       breakdown,
       reasons: generateReasons(champion, breakdown, draftState),
-      matchupDetails: generateMatchupDetails(champion, draftState),
+      matchupDetails: generateMatchupDetails(champion.id, draftState),
       riskLevel: getRiskLevel(breakdown.riskScore),
       tags: generateTags(champion, breakdown, draftState),
     }
   })
 
-  // Sort by overall score descending
+  // Sort by score
   return recommendations.sort((a, b) => b.overallScore - a.overallScore)
 }
 
@@ -224,75 +202,75 @@ function generateReasons(
 ): string[] {
   const reasons: string[] = []
 
-  // Counter play
-  if (breakdown.counterScore > 60) {
-    const hardCounters = draftState.enemyTeam
-      .map((id) => getChampionById(id))
-      .filter((c) => c && champion.strongAgainst.includes(c.id))
-      .map((c) => c!.name)
-
-    if (hardCounters.length > 0) {
-      reasons.push(`Fort contre ${hardCounters.slice(0, 2).join(' et ')}`)
+  // Counter plays
+  if (breakdown.counterScore > 65) {
+    const matchups = MATCHUPS_DATABASE[champion.id]
+    if (matchups) {
+      const counters = draftState.enemyTeam
+        .filter((id) => matchups.strongAgainst.includes(id))
+        .map((id) => getChampionById(id)?.name)
+        .filter(Boolean)
+      if (counters.length > 0) {
+        reasons.push(`Fort contre ${counters.slice(0, 2).join(' et ')}`)
+      }
     }
   }
 
-  // Synergy
-  if (breakdown.synergyScore > 60) {
-    const synergies = draftState.allyTeam
-      .map((id) => getChampionById(id))
-      .filter((c) => c && champion.synergizesWith.includes(c.id))
-      .map((c) => c!.name)
-
-    if (synergies.length > 0) {
-      reasons.push(`Excellente synergie avec ${synergies[0]}`)
+  // Synergies
+  if (breakdown.synergyScore > 65) {
+    const synergies = SYNERGIES_DATABASE[champion.id]
+    if (synergies) {
+      const goodMatches = draftState.allyTeam
+        .filter((id) => synergies.good.includes(id))
+        .map((id) => getChampionById(id)?.name)
+        .filter(Boolean)
+      if (goodMatches.length > 0) {
+        reasons.push(`Excellente synergie avec ${goodMatches[0]}`)
+      }
     }
   }
 
   // Damage balance
   if (breakdown.damageBalanceScore > 75) {
-    const teamAD = draftState.allyTeam
-      .map((id) => getChampionById(id))
-      .filter((c) => c && c.primaryDamage === 'AD').length
-    const teamAP = draftState.allyTeam
-      .map((id) => getChampionById(id))
-      .filter((c) => c && c.primaryDamage === 'AP').length
-
-    if (champion.primaryDamage === 'AD' && teamAP > teamAD) {
-      reasons.push('Apporte des dégâts physiques manquants')
-    }
-    if (champion.primaryDamage === 'AP' && teamAD > teamAP) {
-      reasons.push('Apporte des dégâts magiques manquants')
+    if (champion.primaryDamage === 'AD') {
+      reasons.push('Apporte dégâts physiques manquants')
+    } else if (champion.primaryDamage === 'AP') {
+      reasons.push('Apporte dégâts magiques manquants')
     }
   }
 
-  // Scaling
-  if (champion.scalingPotential && draftState.allyTeam.length < 2) {
-    reasons.push('Excellent scaling en late game')
+  // Role pick
+  if (breakdown.roleScore === 90) {
+    reasons.push(`Parfait pour le rôle ${draftState.selectedRole}`)
   }
 
-  // Early power
-  if (champion.earlyGamePower && draftState.allyTeam.length < 1) {
-    reasons.push('Forte domination en early game')
+  if (reasons.length === 0) {
+    reasons.push('Pick équilibré et solide')
   }
 
-  return reasons.length > 0 ? reasons : ['Pick solide et équilibré']
+  return reasons
 }
 
 function generateMatchupDetails(
-  champion: ChampionAttributes,
+  championId: string,
   draftState: DraftState
 ): { favorable: string[]; difficult: string[]; neutral: string[] } {
   const favorable: string[] = []
   const difficult: string[] = []
   const neutral: string[] = []
 
+  const matchups = MATCHUPS_DATABASE[championId]
+  if (!matchups) {
+    return { favorable, difficult, neutral }
+  }
+
   draftState.enemyTeam.forEach((enemyId) => {
     const enemy = getChampionById(enemyId)
     if (!enemy) return
 
-    if (champion.strongAgainst.includes(enemyId)) {
+    if (matchups.strongAgainst.includes(enemyId)) {
       favorable.push(enemy.name)
-    } else if (champion.weakAgainst.includes(enemyId)) {
+    } else if (matchups.weakAgainst.includes(enemyId)) {
       difficult.push(enemy.name)
     } else {
       neutral.push(enemy.name)
@@ -315,28 +293,16 @@ function generateTags(
 ): string[] {
   const tags: string[] = []
 
-  // Score-based tags
   if (breakdown.counterScore > 70) tags.push('Counter-pick')
   if (breakdown.synergyScore > 70) tags.push('Bonne synergie')
-  if (breakdown.riskScore < 20) tags.push('Safe pick')
-  if (breakdown.riskScore > 70) tags.push('Risqué')
+  if (breakdown.riskScore < 25) tags.push('Safe pick')
+  if (breakdown.riskScore > 60) tags.push('Risqué')
 
-  // Style tags
-  if (champion.styles.includes('engage')) tags.push('Engage')
-  if (champion.styles.includes('tank')) tags.push('Tank')
-  if (champion.styles.includes('scaling')) tags.push('Scaling')
-
-  // Power tags
   if (champion.strength >= 8) tags.push('Fort pick')
   if (champion.difficulty >= 4) tags.push('Difficile')
 
-  // Team composition
-  if (!draftState.allyTeam.some((id) => {
-    const champ = getChampionById(id)
-    return champ && champ.styles.includes('tank')
-  })) {
-    if (champion.styles.includes('tank')) tags.push('Tank needed')
-  }
+  if (champion.scalingPotential) tags.push('Scaling')
+  if (champion.earlyGamePower) tags.push('Early power')
 
-  return [...new Set(tags)].slice(0, 5) // Remove duplicates, max 5
+  return [...new Set(tags)].slice(0, 5)
 }
