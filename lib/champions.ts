@@ -1,18 +1,15 @@
 'use client'
 
 import { ChampionAttributes } from './types'
+import { MATCHUPS_DATABASE, SYNERGIES_DATABASE } from './matchups'
 
-// Données locales de fallback
 const FALLBACK_CHAMPIONS: ChampionAttributes[] = [
-  { id: 'aatrox', name: 'Aatrox', title: 'The Darkin Blade', roles: ['top'], primaryDamage: 'AD', styles: ['engage', 'burst', 'dps'], difficulty: 3, strength: 8, popularity: 8, strongAgainst: [], weakAgainst: [], synergizesWith: [], clashesWith: [], engageTools: true, peelingTools: false, scalingPotential: true, earlyGamePower: true, teamFightPresence: true },
-  { id: 'ahri', name: 'Ahri', title: 'The Nine-Tailed Fox', roles: ['mid'], primaryDamage: 'AP', styles: ['burst', 'poke', 'scaling'], difficulty: 2, strength: 8, popularity: 9, strongAgainst: [], weakAgainst: [], synergizesWith: [], clashesWith: [], engageTools: true, peelingTools: true, scalingPotential: true, earlyGamePower: false, teamFightPresence: true },
+  { id: 'aatrox', name: 'Aatrox', title: 'The Darkin Blade', roles: ['top'], primaryDamage: 'AD', styles: ['engage', 'burst', 'dps'], difficulty: 3, strength: 8, popularity: 8, strongAgainst: MATCHUPS_DATABASE['aatrox']?.strongAgainst || [], weakAgainst: MATCHUPS_DATABASE['aatrox']?.weakAgainst || [], synergizesWith: SYNERGIES_DATABASE['aatrox']?.good || [], clashesWith: SYNERGIES_DATABASE['aatrox']?.bad || [], engageTools: true, peelingTools: false, scalingPotential: true, earlyGamePower: true, teamFightPresence: true },
 ]
 
 export let CHAMPIONS_DATABASE: ChampionAttributes[] = FALLBACK_CHAMPIONS
 
-// Fonction pour transformer les données Riot en ChampionAttributes
 function transformRiotChampion(key: string, riotData: any): ChampionAttributes {
-  // Mapper les rôles
   const roleMap: { [key: string]: any } = {
     'Top': 'top',
     'Jungle': 'jungle',
@@ -23,12 +20,10 @@ function transformRiotChampion(key: string, riotData: any): ChampionAttributes {
 
   const roles = riotData.tags?.map((tag: string) => roleMap[tag]).filter(Boolean) || ['mid']
 
-  // Mapper le type de dégâts
   const attack = riotData.info?.attack || 5
   const magic = riotData.info?.magic || 5
   const primaryDamage = attack > magic ? 'AD' : 'AP'
 
-  // Styles basés sur les stats
   const styles: any[] = []
   const defense = riotData.info?.defense || 5
   const cc = riotData.info?.cc || 0
@@ -40,14 +35,13 @@ function transformRiotChampion(key: string, riotData: any): ChampionAttributes {
   if (difficulty > 6) styles.push('scaling')
   if (styles.length === 0) styles.push('dps')
 
-  // Convertir difficulty en 1-5
   const difficultyValue = Math.max(1, Math.min(5, Math.ceil(difficulty / 2))) as 1 | 2 | 3 | 4 | 5
-  
-  // Convertir strength en 1-10
   const strengthValue = Math.max(1, Math.min(10, Math.ceil((attack + defense + magic) / 3)))
-  
-  // Popularity en 1-10
   const popularityValue = Math.max(1, Math.min(10, Math.floor(Math.random() * 10) + 5))
+
+  // Récupérer les matchups depuis la BD
+  const matchups = MATCHUPS_DATABASE[key] || { strongAgainst: [], weakAgainst: [] }
+  const synergies = SYNERGIES_DATABASE[key] || { good: [], bad: [] }
 
   return {
     id: key,
@@ -59,10 +53,10 @@ function transformRiotChampion(key: string, riotData: any): ChampionAttributes {
     difficulty: difficultyValue,
     strength: strengthValue,
     popularity: popularityValue,
-    strongAgainst: [],
-    weakAgainst: [],
-    synergizesWith: [],
-    clashesWith: [],
+    strongAgainst: matchups.strongAgainst,
+    weakAgainst: matchups.weakAgainst,
+    synergizesWith: synergies.good,
+    clashesWith: synergies.bad,
     engageTools: styles.includes('engage'),
     peelingTools: styles.includes('tank') || cc > 5,
     scalingPotential: difficulty > 5,
@@ -71,7 +65,6 @@ function transformRiotChampion(key: string, riotData: any): ChampionAttributes {
   }
 }
 
-// Charger les champions depuis l'API Riot Data Dragon
 export async function loadChampionsFromRiot() {
   try {
     const response = await fetch(
@@ -83,7 +76,7 @@ export async function loadChampionsFromRiot() {
       CHAMPIONS_DATABASE = Object.entries(data.data).map(([key, champion]: [string, any]) =>
         transformRiotChampion(key, champion)
       )
-      console.log(`✅ Chargé ${CHAMPIONS_DATABASE.length} champions depuis Riot API`)
+      console.log(`✅ Chargé ${CHAMPIONS_DATABASE.length} champions avec matchups`)
       return CHAMPIONS_DATABASE
     }
   } catch (error) {
@@ -93,7 +86,6 @@ export async function loadChampionsFromRiot() {
   return CHAMPIONS_DATABASE
 }
 
-// Initialiser au chargement côté client
 if (typeof window !== 'undefined') {
   loadChampionsFromRiot()
 }
