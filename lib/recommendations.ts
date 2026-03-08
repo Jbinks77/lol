@@ -1,3 +1,5 @@
+'use client'
+
 import { ChampionAttributes, DraftState, Recommendation, Role } from './types'
 import { CHAMPIONS_DATABASE, getChampionById } from './champions'
 import { MATCHUPS_DATABASE, SYNERGIES_DATABASE } from './matchups'
