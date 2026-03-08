@@ -95,7 +95,6 @@ export default function DraftPage() {
     handleAddAlly(getChampionById(championId)!)
   }
 
-  const excludeIds = [...draftState.allyTeam, ...draftState.enemyTeam, ...draftState.bans]
 
   return (
     <div className="min-h-screen bg-background">
